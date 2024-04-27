@@ -13,5 +13,6 @@
     <modules>
         <module>cdr</module>
         <module>brt</module>
+        <module>hrs</module>
     </modules>
 </project>
