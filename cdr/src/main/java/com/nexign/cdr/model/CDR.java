@@ -1,15 +1,14 @@
 package com.nexign.cdr.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Entity
 @Table
 @Data
 @Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
 @NoArgsConstructor
 @AllArgsConstructor
 public class CDR {
@@ -17,21 +16,21 @@ public class CDR {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "call_id")
-    private Long id;
+    Long id;
 
     @Column(name = "call_type")
-    private CallType callType;
+    CallType callType;
 
     @Column(name = "caller_number")
-    private Long callerNumber;
+    Long callerNumber;
 
     @Column(name = "callee_number")
-    private Long calleeNumber;
+    Long calleeNumber;
 
     @Column(name = "start_time")
-    private Long startTime;
+    Long startTime;
 
     @Column(name = "end_time")
-    private Long endTime;
+    Long endTime;
 
 }
