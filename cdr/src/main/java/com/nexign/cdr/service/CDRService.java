@@ -1,9 +1,10 @@
 package com.nexign.cdr.service;
 
-import com.nexign.cdr.generators.GeneratorByPeriod;
+import com.nexign.cdr.producers.GeneratorByPeriod;
 import com.nexign.cdr.model.CDR;
 import com.nexign.cdr.model.CallType;
 import com.nexign.cdr.model.Subscriber;
+import com.nexign.cdr.producers.KafkaCDRProducer;
 import com.nexign.cdr.repository.CDRRepository;
 import com.nexign.cdr.repository.SubscriberRepository;
 import jakarta.annotation.Resource;
@@ -11,10 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.javatuples.Pair;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -35,21 +33,18 @@ import static org.apache.tomcat.util.http.fileupload.FileUtils.deleteDirectory;
 @Service
 public class CDRService {
 
-/*  Идея:
-*   Каждый месяц параллельно будет генерировать записи. Месяц делится на количество потоков
-*   Будет фазер, который на каждом месяце будет ждать генерации всех файлов, которые
-*   собираются в какой-то список месячный. Как только собрался месяц, список который нагенерился
-*   сортируется где-то в другой функции(потоке, который будет ждать пока примут все данные по этому месяцу.
-*   сортированный список берется по 10 и генерирует файлы, который отправляются в BRT.
-* */
-
     BlockingQueue<List<CDR>> queue = new ArrayBlockingQueue<>(10);
 
     @Resource
     private CDRRepository cdrRepository;
+
     @Resource
     private SubscriberRepository subscriberRepository;
-    private final String dirName = "cdr/cdr_files";
+
+    @Resource
+    private KafkaCDRProducer kafkaCDRProducer;
+
+    private final String dirName = "cdr_files";
 
     private long getStartBillingPeriod () {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm:ss");
@@ -146,6 +141,15 @@ public class CDRService {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+
+            kafkaCDRProducer.sendTransaction("cdr-topic", subList.toString());
+
+            try {
+                Files.deleteIfExists(pathFile);
+            } catch (IOException e) {
+                log.error("Fail to create file: " + pathFile);
+            }
+
             cdrList.removeAll(subList);
         }
 

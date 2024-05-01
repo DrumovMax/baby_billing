@@ -1,4 +1,4 @@
-package com.nexign.cdr.generators;
+package com.nexign.cdr.producers;
 
 import com.nexign.cdr.model.CDR;
 import com.nexign.cdr.model.CallType;
