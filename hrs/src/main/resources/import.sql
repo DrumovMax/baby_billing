@@ -1,0 +1,2 @@
+insert into tariff (tariff_id, name_tariff, cost_per_minute_in_net, cost_per_minute_out_net, cost_per_minute_in_other, cost_per_minute_out_other, monthly_limit_minutes, monthly_rate) values (11, 'Классика', 0.0, 1.5, 0.0, 2.5, 0, 0.0);
+insert into tariff (tariff_id, name_tariff, cost_per_minute_in_net, cost_per_minute_out_net, cost_per_minute_in_other, cost_per_minute_out_other, monthly_limit_minutes, monthly_rate) values (12, 'Помесячный', 0.0, 1.5, 0.0, 2.5, 50, 100.0);
