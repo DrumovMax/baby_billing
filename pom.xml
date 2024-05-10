@@ -14,5 +14,7 @@
         <module>cdr</module>
         <module>brt</module>
         <module>hrs</module>
+        <module>api_gateway</module>
+        <module>eureka_server</module>
     </modules>
 </project>
