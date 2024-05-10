@@ -8,13 +8,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class KafkaCDRProducer {
 
-    private KafkaTemplate<String, String> kafkaTemplate;
+    private final KafkaTemplate<String, String> kafkaTemplate;
 
     public KafkaCDRProducer(KafkaTemplate<String, String> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    public void sendTransaction(String topic, String message) {
-        kafkaTemplate.send(topic, message);
+    public void sendTransaction(String topic, String partition,  String message) {
+        kafkaTemplate.send(topic, partition,  message);
     }
 }

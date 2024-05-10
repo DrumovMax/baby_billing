@@ -10,6 +10,7 @@ import com.nexign.cdr.repository.SubscriberRepository;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.javatuples.Pair;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
@@ -21,6 +22,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -33,7 +35,7 @@ import static org.apache.tomcat.util.http.fileupload.FileUtils.deleteDirectory;
 @Service
 public class CDRService {
 
-    BlockingQueue<List<CDR>> queue = new ArrayBlockingQueue<>(10);
+    private final BlockingQueue<List<CDR>> queue = new ArrayBlockingQueue<>(10);
 
     @Resource
     private CDRRepository cdrRepository;
@@ -44,7 +46,23 @@ public class CDRService {
     @Resource
     private KafkaCDRProducer kafkaCDRProducer;
 
-    private final String dirName = "cdr_files";
+    private final Phaser phaser = new Phaser(1);
+
+    @Value("${directory.cdr.name}")
+    private String CDR_FILES;
+    private static final String CDR_TOPIC = "cdr-topic";
+
+    public void nextIteration () {
+        phaser.arriveAndAwaitAdvance();
+    }
+
+    public void register () {
+        phaser.register();
+    }
+
+    public void deregister () {
+        phaser.arriveAndDeregister();
+    }
 
     private long getStartBillingPeriod () {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm:ss");
@@ -53,12 +71,6 @@ public class CDRService {
         return dateTime.toEpochSecond(ZoneOffset.UTC);
     }
 
-    private long getEndBillingPeriod (long currentUnixTime) {
-        LocalDateTime dateTime = LocalDateTime.ofInstant(Instant.ofEpochSecond(currentUnixTime), ZoneOffset.UTC);
-        LocalDateTime newDateTime = dateTime.plusMonths(12);
-
-        return newDateTime.toEpochSecond(ZoneOffset.UTC);
-    }
 
     private long countNextUnixTimeMonth (long currentUnixTime) {
         LocalDateTime dateTime = LocalDateTime.ofInstant(Instant.ofEpochSecond(currentUnixTime), ZoneOffset.UTC);
@@ -99,8 +111,17 @@ public class CDRService {
         return  LocalDateTime.ofInstant(Instant.ofEpochSecond(epoch), ZoneOffset.UTC);
     }
 
+    private void sendDataToBRT (Path path) {
+        try {
+            String str = Base64.getEncoder().encodeToString(Files.readAllBytes(path));
+            kafkaCDRProducer.sendTransaction(CDR_TOPIC, "0", str);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private void sendByMonthList (List<CDR> cdrList, Phaser phaser) {
-        cdrList.sort(Comparator.comparingLong(CDR::getStartTime));
+        cdrList.sort(Comparator.comparingLong(CDR::getEndTime));
         List<CDR> subList;
         while (!cdrList.isEmpty()) {
             if (cdrList.size() > 10) {
@@ -114,7 +135,7 @@ public class CDRService {
             LocalDateTime endLocalDateTime = epochToLocalDateTime(subList.get(subList.size() - 1).getStartTime());
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd-yyyy");
 
-            String pathFileString = dirName + "/cdr_"
+            String pathFileString = CDR_FILES + "/cdr_"
                     + startLocalDateTime.format(formatter)
                     + "_"
                     + endLocalDateTime.format(formatter)
@@ -124,7 +145,7 @@ public class CDRService {
             try {
                 if (!Files.exists(pathFile)) Files.createFile(pathFile);
             } catch (IOException e) {
-                log.error("Fail to create file: " + pathFile);
+                log.error("Fail to create file: {}", pathFile);
             }
 
             try (PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(pathFileString, true)))) {
@@ -142,12 +163,12 @@ public class CDRService {
                 throw new RuntimeException(e);
             }
 
-            kafkaCDRProducer.sendTransaction("cdr-topic", subList.toString());
+            sendDataToBRT(pathFile);
 
             try {
                 Files.deleteIfExists(pathFile);
             } catch (IOException e) {
-                log.error("Fail to create file: " + pathFile);
+                log.error("Fail to delete file: {}", pathFile);
             }
 
             cdrList.removeAll(subList);
@@ -157,20 +178,16 @@ public class CDRService {
     }
 
     public void startEmulate () {
-        System.out.println("Start time: " + LocalDateTime.now());
+        System.out.println("Start emulation");
         List<CDR> monthCDRs = new ArrayList<>();
         long currentUnixTime = getStartBillingPeriod();
         long nextMonthUnixTime = countNextUnixTimeMonth(currentUnixTime);
-        long limitTime = getEndBillingPeriod(currentUnixTime); // Время окончания тарифицируемого периода
 
         int numberOfThreads = 4;
         Thread[] threads = new Thread[numberOfThreads];
 
-        List<Subscriber> subscribers = subscriberRepository.findAll();
-        Phaser phaser = new Phaser(1);
-
         try {
-            Path path = Paths.get(dirName);
+            Path path = Paths.get(CDR_FILES);
             if (!Files.exists(path)) {
                 Files.createDirectory(path);
             } else {
@@ -178,24 +195,21 @@ public class CDRService {
                 Files.createDirectory(path);
             }
         } catch (IOException e) {
-            log.error("Fail to create directory: " + dirName);
+            log.error("Fail to create directory: " + CDR_FILES);
         }
 
         for (int month = 1; month <= 12; month++) {
             System.out.println("Month: " + month);
             List<Pair<Long, Long>> splitMonth = splitMonth(currentUnixTime, nextMonthUnixTime, numberOfThreads);
 
-//            Создаем потоки и даем очередь. Они потом должны по завершению положить в очередь результат своей работы
-//            Пока незакончили тут после функции будет ожидание по фазеру
             for (int i = 0; i < splitMonth.size(); i++) {
                 phaser.register();
 
+                List<Subscriber> subscribers = subscriberRepository.findAll();
                 GeneratorByPeriod generator = new GeneratorByPeriod(queue, subscribers, phaser, splitMonth.get(i).getValue0(), splitMonth.get(i).getValue1());
                 threads[i] = new Thread(generator);
                 threads[i].start();
             }
-
-            phaser.arriveAndAwaitAdvance();
 
             while (!queue.isEmpty()) {
                 monthCDRs.addAll(consume());
@@ -206,8 +220,8 @@ public class CDRService {
             monthCDRs.clear();
             currentUnixTime = nextMonthUnixTime;
             nextMonthUnixTime = countNextUnixTimeMonth(currentUnixTime);
+            System.out.println("End of " + month + " month");
         }
-        System.out.println("End of billing period: " + limitTime);
-        System.out.println("End time: " + LocalDateTime.now());
+        System.out.println("End of billing period");
     }
 }
