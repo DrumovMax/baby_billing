@@ -4,7 +4,39 @@ networks:
   kafka_net:
     driver: bridge
 
+volumes:
+  brt-pg-data:
+  hrs-pg-data:
+
 services:
+  brt-postgres-db:
+    image: postgres:alpine
+    container_name: brt-postgres-db
+    networks:
+      - kafka_net
+    volumes:
+      - brt-pg-data:/var/lib/postgresql/brt-data
+    environment:
+      - POSTGRES_DB=brt-db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+
+  hrs-postgres-db:
+    image: postgres:alpine
+    container_name: hrs-postgres-db
+    networks:
+      - kafka_net
+    volumes:
+      - hrs-pg-data:/var/lib/postgresql/hrs-data
+    environment:
+      - POSTGRES_DB=hrs-db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5434:5432"
+
   zookeeper:
     container_name: zookeeper
     image: confluentinc/cp-zookeeper:7.4.4
@@ -32,18 +64,82 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_CREATE_TOPICS: "cdr-topic:1:1"
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      KAFKA_CREATE_TOPICS: "cdr-topic:1:1, 
+                            brt-cache-topic:1:1, 
+                            hrs-cache-topic:1:1"
 
   cdr:
-    image: cdr
+    image: drumov/cdr
     container_name: cdr
-    build:
-      context: .
-      dockerfile: cdr/Dockerfile
-    ports:
-      - "8080:8080"
+#    build:
+#      context: .
+#      dockerfile: cdr/Dockerfile
+#    ports:
+#      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
     networks:
       - kafka_net
     depends_on:
       - kafka
+    restart: always
+
+  brt:
+    image: drumov/brt
+    container_name: brt
+#    build:
+#      context: .
+#      dockerfile: brt/Dockerfile
+#    ports:
+#      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - kafka_net
+    depends_on:
+      - kafka
+      - brt-postgres-db
+    restart: always
+
+  hrs:
+    image: drumov/hrs
+    container_name: hrs
+#    build:
+#      context: .
+#      dockerfile: hrs/Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - kafka_net
+    depends_on:
+      - kafka
+      - hrs-postgres-db
+    restart: always
+
+  eureka-server:
+    image: drumov/eureka-server
+    container_name: eureka-server
+
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - kafka_net
+    restart: always
+
+  api-gateway:
+    image: drumov/api-gateway
+    container_name: api-gateway
+    ports:
+      - "8765:8765"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      - eureka-server
+    networks:
+      - kafka_net
     restart: always
