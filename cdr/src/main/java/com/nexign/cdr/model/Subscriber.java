@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+/**
+ * Represents a subscriber entity with a unique identifier, phone number and isRomashka flag.
+ */
 @Entity
 @Builder
 @Data

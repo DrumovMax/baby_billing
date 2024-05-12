@@ -32,6 +32,9 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+/**
+ * Service class for performing Billing Real Time (BRT) operations.
+ */
 @Slf4j
 @Service
 public class BRTService {
@@ -64,24 +67,53 @@ public class BRTService {
 
     private final Gson gson;
 
+    /**
+     * Constructor for the class, initializes a Gson object for JSON serialization/deserialization.
+     */
     public BRTService() {
         this.gson = new GsonBuilder()
                 .setPrettyPrinting()
                 .create();
     }
+
+    /**
+     * Serializes an object into JSON format.
+     *
+     * @param input the object to be serialized
+     * @return a string representing the serialized object in JSON format
+     */
     public <T> String toJson (T input) {
         return gson.toJson(input);
     }
 
+    /**
+     * Deserializes JSON string into an object of the specified type.
+     *
+     * @param json      the JSON string to deserialize
+     * @param typeToken a TypeToken object defining the type of the returned object
+     * @return the deserialized object
+     */
     public <T> T decodeJson (String json, TypeToken<T> typeToken) {
         return gson.fromJson(json, typeToken.getType());
     }
 
+    /**
+     * Checks if the given MSISDN number is valid.
+     *
+     * @param msisdn the MSISDN number to check
+     * @return true if the number is valid, otherwise false
+     */
     public boolean checkMsisdn(long msisdn) {
         String msisdnStr = String.valueOf(msisdn);
         return msisdnStr.length() == 11 && msisdnStr.startsWith("7");
     }
 
+    /**
+     * Checks the existence of the specified tariff.
+     *
+     * @param tariffId the tariff ID to check
+     * @return true if the tariff exists, otherwise false
+     */
     public boolean checkTariff (Long tariffId) {
         TariffDTO tariffDTO = tariffCache.getDataFromCache(tariffId);
         if (tariffDTO == null) {
@@ -110,17 +142,34 @@ public class BRTService {
         return true;
     }
 
+    /**
+     * Performs monthly billing based on a list of bills.
+     *
+     * @param bills the list of bills to process
+     */
     public void monthlyPayment (List<BillDTO> bills) {
         for (BillDTO billDTO : bills) {
             clientService.newBalance(billDTO);
         }
     }
 
+    /**
+     * Decodes a Base64-encoded message.
+     *
+     * @param message the Base64-encoded message
+     * @return the decoded message
+     */
     public String decodeData (String message) {
         return new String(Base64.getDecoder().decode(message), StandardCharsets.UTF_8);
     }
 
-
+    /**
+     * Checks the client corresponding to the caller number from a list of clients.
+     *
+     * @param callerNumber the caller's phone number
+     * @param clients      the list of clients to search
+     * @return the client matching the caller's phone number, or null if not found
+     */
     private Client checkClient (Long callerNumber, List<Client> clients) {
         return clients.stream()
                 .filter(c -> c.getMsisdn().equals(callerNumber))
@@ -128,14 +177,31 @@ public class BRTService {
                 .orElse(null);
     }
 
+    /**
+     * Converts a string representation of call type to a CallType enum.
+     *
+     * @param callTypeString the string representation of the call type ("01" for incoming, "02" for outgoing)
+     * @return the corresponding CallType enum value
+     */
     private CallType stringToCallType (String callTypeString) {
         return callTypeString.equals("01") ? CallType.INCOMING : CallType.OUTCOMING;
     }
 
+    /**
+     * Constructs a new HttpClient instance with a configured connection timeout.
+     *
+     * @return a new HttpClient instance
+     */
     private HttpClient newHttpClient() {
         return HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     }
 
+    /**
+     * Constructs an HttpRequest object for the specified URL.
+     *
+     * @param url the URL to construct the request for
+     * @return the HttpRequest object
+     */
     private HttpRequest buildHttpRequest(String url) {
         return HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -143,6 +209,15 @@ public class BRTService {
                 .build();
     }
 
+    /**
+     * Sends a JSON message to the HRS (High performance rating) for processing and retrieves a billing result.
+     *
+     * @param json the JSON message to send
+     * @return the billing result as a BillDTO object
+     * @throws IOException          if an I/O error occurs
+     * @throws InterruptedException if the operation is interrupted
+     * @throws ExecutionException   if the HTTP request execution fails
+     */
     private BillDTO sendToHRS (String json) throws IOException, InterruptedException, ExecutionException {
         String callParam = URLEncoder.encode(json, StandardCharsets.UTF_8);
         String url = String.format("http://%s:%s%s%s%s?%s=%s",
@@ -166,6 +241,13 @@ public class BRTService {
         return responseBillDTO;
     }
 
+    /**
+     * Sends a request to the HRS to retrieve monthly bill data for a specified time period.
+     *
+     * @param startMonth the starting month of the billing period
+     * @param endMonth   the ending month of the billing period
+     * @return a list of BillDTO objects representing the monthly bills
+     */
     private List<BillDTO> sendCheckToHRS (int startMonth, int endMonth) {
         String url = String.format("http://%s:%s%s%s%s?%s=%s&%s=%s",
                 HOST,
@@ -193,6 +275,11 @@ public class BRTService {
         return responseBillData;
     }
 
+    /**
+     * Sends a list of clients to the HRS for caching purposes.
+     *
+     * @param clients the list of clients to be cached
+     */
     private void sendClientsToCacheHRS (List<Client> clients) {
         String clientParam = URLEncoder.encode(toJson(clients), StandardCharsets.UTF_8);
         String url = String.format("http://%s:%s%s%s%s?%s=%s",
@@ -213,6 +300,9 @@ public class BRTService {
         future.join();
     }
 
+    /**
+     * Performs monthly changes to client tariffs based on predefined rules.
+     */
     private void monthlyChangeTariff () {
         List<Client> clients = clientRepository.findAll();
         Set<Long> tariffCacheKeySet = tariffCache.getAllKeysFromCache();
@@ -243,6 +333,9 @@ public class BRTService {
         }
     }
 
+    /**
+     * Performs monthly balance top-up operations for clients based on predefined rules.
+     */
     private void monthlyTopUp () {
         List<Client> clients = clientRepository.findAll();
         Random random = new Random();
@@ -260,6 +353,11 @@ public class BRTService {
         });
     }
 
+    /**
+     * Checks if a new month has started based on call timestamps and triggers monthly operations.
+     *
+     * @param callDTO the CallDTO object representing a call event
+     */
     private void checkNewMonth (CallDTO callDTO) {
         int startMonth = LocalDateTime.ofEpochSecond(callDTO.getStartTime(), 0, ZoneOffset.UTC).getMonthValue();
         int endMonth = LocalDateTime.ofEpochSecond(callDTO.getEndTime(), 0, ZoneOffset.UTC).getMonthValue();
@@ -287,6 +385,11 @@ public class BRTService {
         }
     }
 
+    /**
+     * Processes a list of call records and performs billing and rating operations.
+     *
+     * @param message the message containing call records in CSV format
+     */
     void checkListCall(String message) {
         List<Client> clients = clientRepository.findAll();
 

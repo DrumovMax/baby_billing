@@ -4,6 +4,9 @@ import lombok.*;
 
 import java.math.BigDecimal;
 
+/**
+ * Data Transfer Object (DTO) representing a bill for a subscriber.
+ */
 @Getter
 @Setter
 @Builder

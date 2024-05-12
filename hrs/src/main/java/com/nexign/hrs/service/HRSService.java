@@ -28,6 +28,9 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Service class providing business logic for handling HTTP requests and calculations related to HRS services.
+ */
 @Slf4j
 @Service
 public class HRSService {
@@ -48,6 +51,13 @@ public class HRSService {
     private static final Long MONTH_TARIFF = 12L;
     private static final String MINIMAL_STEP = "0.1";
 
+    /**
+     * Converts a list of objects to JSON format.
+     *
+     * @param tariffs The list of objects to convert.
+     * @param <T>     The type of the objects in the list.
+     * @return A JSON representation of the list.
+     */
     public <T> String listToJson (List<T> tariffs) {
         Gson gson = new GsonBuilder()
                 .setPrettyPrinting()
@@ -56,6 +66,14 @@ public class HRSService {
         return gson.toJson(tariffs);
     }
 
+    /**
+     * Converts JSON string to a specified object type.
+     *
+     * @param json      The JSON string to parse.
+     * @param typeToken Type token for the target object type.
+     * @param <T>       The target object type.
+     * @return The parsed object of type T.
+     */
     public <T> T fromJson (String json, TypeToken<T> typeToken) {
         Gson gson = new GsonBuilder()
                 .setPrettyPrinting()
@@ -64,18 +82,41 @@ public class HRSService {
         return gson.fromJson(json, typeToken.getType());
     }
 
+    /**
+     * Decodes URL-encoded string.
+     *
+     * @param urlParam The URL-encoded string to decode.
+     * @return The decoded string.
+     */
     public String decodeUrl(String urlParam) {
         return URLDecoder.decode(urlParam, StandardCharsets.UTF_8);
     }
 
+    /**
+     * Updates the client cache with a list of client DTOs.
+     *
+     * @param json The JSON string representing a list of client DTOs.
+     */
     public void updateClientCacheByListClient (String json) {
         clientCache.parseAndCacheJsonArray(json);
     }
 
+    /**
+     * Checks if the client's tariff is classic or if remaining minutes are zero.
+     *
+     * @param cachedClient The client data to check.
+     * @return True if the client's tariff is classic or remaining minutes are zero; false otherwise.
+     */
     private boolean checkTariff (ClientDTO cachedClient) {
         return cachedClient.getTariffId().equals(CLASSIC_TARIFF) || cachedClient.getRemainingMinutes() == 0;
     }
 
+    /**
+     * Calculates bills for clients based on monthly rates.
+     *
+     * @param clients List of client data.
+     * @return JSON representation of the bill details.
+     */
     public String clientForMonthBill (List<ClientDTO> clients) {
         List<BillDTO> bills = new ArrayList<>();
         for (ClientDTO clientDTO : clients) {
@@ -92,6 +133,13 @@ public class HRSService {
 
     }
 
+    /**
+     * Checks and processes new month billing for a specified range of months.
+     *
+     * @param startMonth Start month of the billing period.
+     * @param endMonth   End month of the billing period.
+     * @return JSON representation of the monthly bills.
+     */
     public String checkNewMonth(int startMonth, int endMonth) {
         List<BillDTO> bills = new ArrayList<>();
         for (int month = startMonth; month <= endMonth; month++) {
@@ -103,11 +151,25 @@ public class HRSService {
         return listToJson(bills);
     }
 
+    /**
+     * Rounds the given amount to the nearest minimal step.
+     *
+     * @param toPay Amount to be rounded.
+     * @return Rounded amount.
+     */
     private BigDecimal roundNumberBill (BigDecimal toPay) {
         BigDecimal divisor = new BigDecimal(MINIMAL_STEP);
         return  toPay.divide(divisor, 0, RoundingMode.CEILING).multiply(divisor);
     }
 
+    /**
+     * Counts the bill for a monthly duration based on client and call details.
+     *
+     * @param durationMinutes Monthly duration in minutes.
+     * @param clientDTO       Client details.
+     * @param callDTO         Call details.
+     * @return Calculated bill amount.
+     */
     private BigDecimal countMonthlyBill (Integer durationMinutes, ClientDTO clientDTO, CallDTO callDTO) {
         int newRemainingMinutes = clientDTO.getRemainingMinutes();
 
@@ -124,7 +186,13 @@ public class HRSService {
         return durationMinutes > 0 ? countBill(durationMinutes, callDTO) : new BigDecimal(0);
     }
 
-
+    /**
+     * Counts the bill amount for a specified call duration.
+     *
+     * @param durationMinutes Duration of the call in minutes.
+     * @param callDTO         Call details.
+     * @return Calculated bill amount.
+     */
     private BigDecimal countBill (Integer durationMinutes, CallDTO callDTO) {
         ClientDTO callee = checkClientCache(callDTO.getCalleeNumber());
         Tariff tariff = tariffRepository.findById(callDTO.getTariffId()).orElse(null);
@@ -144,6 +212,12 @@ public class HRSService {
         return BigDecimal.ZERO;
     }
 
+    /**
+     * Retrieves and checks a client's data from the cache or external service.
+     *
+     * @param msisdn Client's phone number.
+     * @return Client data retrieved from cache or external service.
+     */
     private ClientDTO checkClientCache (Long msisdn) {
         ClientDTO cachedClient = clientCache.getDataFromCache(msisdn);
 
@@ -180,6 +254,12 @@ public class HRSService {
         return null;
     }
 
+    /**
+     * Calculates the bill for a call based on call details and client data.
+     *
+     * @param callDTO Call details.
+     * @return BillDTO containing the calculated bill amount.
+     */
     public BillDTO callCalculation (CallDTO callDTO) {
         ClientDTO cachedClient = clientCache.getDataFromCache(callDTO.getCallerNumber());
 

@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+/**
+ * Represents a Call Detail Record (CDR) entity storing information about a call.
+ */
 @Entity
 @Table
 @Data

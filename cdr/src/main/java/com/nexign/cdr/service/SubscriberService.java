@@ -6,12 +6,20 @@ import jakarta.annotation.Resource;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+/**
+ * Service class for managing subscribers.
+ */
 @Service
 public class SubscriberService {
 
     @Resource
     private SubscriberRepository subscriberRepository;
 
+    /**
+     * Adds a new subscriber with the given MSISDN to the database.
+     *
+     * @param msisdn The MSISDN of the new subscriber to add.
+     */
     @Transactional
     public void addNewUser (Long msisdn) {
         Subscriber subscriber = Subscriber.builder()

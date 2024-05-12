@@ -7,6 +7,9 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
+/**
+ * Entity class representing a tariff in the system.
+ */
 @Entity
 @Data
 @NoArgsConstructor

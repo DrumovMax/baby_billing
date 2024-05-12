@@ -31,6 +31,9 @@ import java.util.concurrent.Phaser;
 
 import static org.apache.tomcat.util.http.fileupload.FileUtils.deleteDirectory;
 
+/**
+ * CDRService manages the generation and processing of Call Detail Records (CDRs).
+ */
 @Slf4j
 @Service
 public class CDRService {
@@ -52,15 +55,28 @@ public class CDRService {
     private String CDR_FILES;
     private static final String CDR_TOPIC = "cdr-topic";
 
+    /**
+     * Advances the Phaser to the next phase, allowing waiting threads to proceed.
+     */
     public void nextIteration () {
         phaser.arriveAndAwaitAdvance();
     }
 
+    /**
+     * Registers a new party to the Phaser, returning the current count of registered parties.
+     *
+     * @return The current count of registered parties after registration.
+     */
     public int register () {
         phaser.register();
         return phaser.getRegisteredParties() - 1;
     }
 
+    /**
+     * Deregisters a party from the Phaser if more than one party is registered.
+     *
+     * @return The current count of registered parties after deregistration.
+     */
     public int deregister () {
         if (phaser.getRegisteredParties() > 1) {
             phaser.arriveAndDeregister();
@@ -69,6 +85,11 @@ public class CDRService {
         return phaser.getRegisteredParties() - 1;
     }
 
+    /**
+     * Retrieves the start time of the billing period.
+     *
+     * @return The start time of the billing period in epoch seconds.
+     */
     private long getStartBillingPeriod () {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm:ss");
         LocalDateTime dateTime = LocalDateTime.parse("01/01/2023 00:00:00", formatter);
@@ -76,7 +97,12 @@ public class CDRService {
         return dateTime.toEpochSecond(ZoneOffset.UTC);
     }
 
-
+    /**
+     * Computes the epoch time for the start of the next month.
+     *
+     * @param currentUnixTime The current epoch time.
+     * @return The epoch time for the start of the next month.
+     */
     private long countNextUnixTimeMonth (long currentUnixTime) {
         LocalDateTime dateTime = LocalDateTime.ofInstant(Instant.ofEpochSecond(currentUnixTime), ZoneOffset.UTC);
         LocalDateTime newDateTime = dateTime.plusMonths(1);
@@ -84,6 +110,14 @@ public class CDRService {
         return newDateTime.toEpochSecond(ZoneOffset.UTC);
     }
 
+    /**
+     * Splits a month into multiple parts based on the specified number of parts.
+     *
+     * @param startMonth The start of the month (epoch time).
+     * @param endMonth   The end of the month (epoch time).
+     * @param numParts   The number of parts to split the month into.
+     * @return A list of pairs representing the start and end times for each part.
+     */
     private List<Pair<Long, Long>> splitMonth (long startMonth, long endMonth, int numParts) {
         List<Pair<Long, Long>> result = new ArrayList<>();
 
@@ -98,6 +132,11 @@ public class CDRService {
         return result;
     }
 
+    /**
+     * Consumes CDRs from the blocking queue and saves them to the database.
+     *
+     * @return The list of consumed CDRs.
+     */
     synchronized public List<CDR> consume () {
         try {
             List<CDR> cdrList = queue.take();
@@ -108,14 +147,31 @@ public class CDRService {
         }
     }
 
+    /**
+     * Converts a call type to an integer representation.
+     *
+     * @param callType The call type to convert.
+     * @return An integer representation of the call type (1 for INCOMING, 2 for OUTGOING).
+     */
     private int callTypeToInt (CallType callType) {
         return CallType.INCOMING.equals(callType) ? 1 : 2;
     }
 
+    /**
+     * Converts epoch time to LocalDateTime.
+     *
+     * @param epoch The epoch time to convert.
+     * @return The LocalDateTime equivalent of the epoch time.
+     */
     private LocalDateTime epochToLocalDateTime (long epoch) {
         return  LocalDateTime.ofInstant(Instant.ofEpochSecond(epoch), ZoneOffset.UTC);
     }
 
+    /**
+     * Sends CDR data to BRT by encoding it as Base64 and producing it to Kafka.
+     *
+     * @param path The path to the CDR data file.
+     */
     private void sendDataToBRT (Path path) {
         try {
             String str = Base64.getEncoder().encodeToString(Files.readAllBytes(path));
@@ -125,6 +181,12 @@ public class CDRService {
         }
     }
 
+    /**
+     * Processes and sends CDRs grouped by month to BRT.
+     *
+     * @param cdrList The list of CDRs to process and send.
+     * @param phaser  The phaser used to coordinate threads.
+     */
     private void sendByMonthList (List<CDR> cdrList, Phaser phaser) {
         cdrList.sort(Comparator.comparingLong(CDR::getEndTime));
         List<CDR> subList;
@@ -182,6 +244,9 @@ public class CDRService {
         phaser.arriveAndAwaitAdvance();
     }
 
+    /**
+     * Starts the emulation process by generating CDRs for a billing period.
+     */
     public void startEmulate () {
         System.out.println("Start emulation");
         List<CDR> monthCDRs = new ArrayList<>();
@@ -229,6 +294,11 @@ public class CDRService {
         System.out.println("End of billing period");
     }
 
+    /**
+     * Sends a CDR file encoded as Base64 to BRT using Kafka.
+     *
+     * @param base64CDRFile The CDR file encoded as a Base64 string.
+     */
     public void sendCDRToBRT (String base64CDRFile) {
         kafkaCDRProducer.sendTransaction(CDR_TOPIC, "0", base64CDRFile);
     }

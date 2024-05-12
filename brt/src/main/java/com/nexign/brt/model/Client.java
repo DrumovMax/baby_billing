@@ -8,6 +8,9 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
+/**
+ * Represents a client entity in the database.
+ */
 @Entity
 @Data
 @NoArgsConstructor

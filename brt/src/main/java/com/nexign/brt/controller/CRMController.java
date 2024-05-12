@@ -34,6 +34,14 @@ public class CRMController {
     private static final String ADMIN = "admin";
     private static final String BASIC = "basic";
 
+    /**
+     * Endpoint for topping up balance of a subscriber.
+     *
+     * @param msisdn   The MSISDN (phone number) of the subscriber.
+     * @param topUpDTO The DTO containing top-up details.
+     * @param header   The HTTP headers containing authorization details.
+     * @return ResponseEntity containing the result of the top-up operation.
+     */
     @PatchMapping("/subscriber/{msisdn}/pay")
     public ResponseEntity<String> topUpBalance (@PathVariable("msisdn") String msisdn,
                                                 @RequestBody TopUpDTO topUpDTO,
@@ -67,6 +75,14 @@ public class CRMController {
             }
     }
 
+    /**
+     * Endpoint for changing the tariff of a subscriber.
+     *
+     * @param msisdn          The MSISDN (phone number) of the subscriber.
+     * @param changeTariffDTO The DTO containing new tariff details.
+     * @param header          The HTTP headers containing authorization details.
+     * @return ResponseEntity containing the result of the tariff change operation.
+     */
     @PatchMapping("/subscriber/{msisdn}/changeTariff")
     public ResponseEntity<String> changeTariff (@PathVariable String msisdn,
                                                 @RequestBody ChangeTariffDTO changeTariffDTO,
@@ -102,6 +118,13 @@ public class CRMController {
 
     }
 
+    /**
+     * Endpoint for adding a new client.
+     *
+     * @param clientDTO The DTO containing new client details.
+     * @param header    The HTTP headers containing authorization details.
+     * @return ResponseEntity containing the result of adding a new client operation.
+     */
     @PostMapping("/subscriber/save")
     public ResponseEntity<String> addNewClient (@RequestBody ClientDTO clientDTO,
                                                 @RequestHeader(AUTHORIZATION) HttpHeaders header) {
@@ -137,6 +160,12 @@ public class CRMController {
         }
     }
 
+    /**
+     * Endpoint for checking client details.
+     *
+     * @param msisdn The MSISDN of the client.
+     * @return ResponseEntity containing the client details in JSON format.
+     */
     @GetMapping("/check-msisdn/{msisdn}")
     public ResponseEntity<String> checkClient (@PathVariable String msisdn) {
         Client client = clientService.getClient(Long.parseLong(msisdn));
@@ -148,6 +177,12 @@ public class CRMController {
         return ResponseEntity.status(HttpStatus.OK).body(json);
     }
 
+    /**
+     * Checks if the manager is authorized based on HTTP basic authentication.
+     *
+     * @param headers The HTTP headers containing the authorization details.
+     * @return true if the manager is authorized; otherwise, false.
+     */
     public boolean isAdminAuthorized (HttpHeaders headers) {
         String[] credentials = getBasicHeader(headers);
         if (credentials.length != 2) {
@@ -158,6 +193,13 @@ public class CRMController {
         return ADMIN.equals(username) && ADMIN.equals(password);
     }
 
+    /**
+     * Checks if the subscriber is authorized based on HTTP basic authentication.
+     *
+     * @param headers The HTTP headers containing the authorization details.
+     * @param msisdn  The MSISDN (phone number) of the subscriber.
+     * @return true if the subscriber is authorized; otherwise, false.
+     */
     public boolean isSubscriberAuthorized (HttpHeaders headers, Long msisdn) {
         String[] credentials = getBasicHeader(headers);
         if (credentials.length != 2) {
@@ -167,6 +209,12 @@ public class CRMController {
         return msisdn.equals(Long.parseLong(username));
     }
 
+    /**
+     * Retrieves basic authentication credentials from HTTP headers.
+     *
+     * @param headers The HTTP headers containing the authorization details.
+     * @return an array containing username and password extracted from the authorization header.
+     */
     private static String[] getBasicHeader (HttpHeaders headers) {
         if (headers.containsKey(HttpHeaders.AUTHORIZATION)) {
             String authHeader = headers.getFirst(HttpHeaders.AUTHORIZATION);

@@ -5,6 +5,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Data Transfer Object (DTO) representing a tariff.
+ */
 @Getter
 @Setter
 @NoArgsConstructor
