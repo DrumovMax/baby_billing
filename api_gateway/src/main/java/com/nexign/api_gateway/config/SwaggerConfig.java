@@ -1,28 +1,26 @@
 package com.nexign.api_gateway.config;
 
+import org.springdoc.core.configuration.SpringDocConfiguration;
+import org.springdoc.core.properties.SpringDocConfigProperties;
+import org.springdoc.core.providers.ObjectMapperProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.cors.reactive.CorsWebFilter;
-import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
-
-import java.util.Arrays;
 
 @Configuration
 public class SwaggerConfig {
 
     @Bean
-    public CorsWebFilter corsFilter() {
-        org.springframework.web.cors.CorsConfiguration corsConfiguration = new org.springframework.web.cors.CorsConfiguration();
-        corsConfiguration.setAllowCredentials(true);
-        corsConfiguration.addAllowedOrigin("*");
-        corsConfiguration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"));
-        corsConfiguration.addAllowedHeader("origin");
-        corsConfiguration.addAllowedHeader("content-type");
-        corsConfiguration.addAllowedHeader("accept");
-        corsConfiguration.addAllowedHeader("authorization");
-        corsConfiguration.addAllowedHeader("cookie");
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", corsConfiguration);
-        return new CorsWebFilter(source);
+    SpringDocConfiguration springDocConfiguration() {
+        return new SpringDocConfiguration();
+    }
+
+    @Bean
+    public SpringDocConfigProperties springDocConfigProperties() {
+        return new SpringDocConfigProperties();
+    }
+
+    @Bean
+    public ObjectMapperProvider objectMapperProvider() {
+        return new ObjectMapperProvider(springDocConfigProperties());
     }
 }

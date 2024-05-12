@@ -1,0 +1,193 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: "Baby Billing API"
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:8765
+tags:
+  - name: subscriber
+    description: 'Абонент'
+  - name: manager
+    description: 'Менеджер'
+
+paths:
+  /brt/api/subscriber/{msisdn}/pay:
+    patch:
+      tags:
+        - subscriber
+      summary: Пополнение баланса
+      operationId: upToBalance
+      description: Пополнение баланса абонентом на введенную сумму
+      parameters:
+        - name: msisdn
+          in: path
+          description: Номер телефона абонента
+          required: true
+          schema:
+            type: integer
+            example: 70009991212
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Money'
+      responses:
+        '200':
+          description: Баланс пополнен успешно
+        '400':
+          $ref: '#/components/responses/InvalidValues'
+        '404':
+          description: Абонент не найден
+        '5XX':
+          $ref: '#/components/responses/ServerError'
+
+  /brt/api/subscriber/{msisdn}/changeTariff:
+    patch:
+      tags:
+        - manager
+      summary: Смена тарифа абонента
+      security:
+        - manager_auth: []
+      operationId: changeTariff
+      description: Позволяет менеджеру сменить тариф абоненту
+      parameters:
+        - name: msisdn
+          in: path
+          description: Номер телефона абонента
+          required: true
+          schema:
+            type: integer
+            example: 79007770303
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewTariff'
+      responses:
+        '201':
+          description: Тариф успешно изменен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscriber'
+        '400':
+          $ref: '#/components/responses/InvalidValues'
+        '401':
+          $ref: '#/components/responses/InvalidAuth'
+        '404':
+          description: Абонент не найден
+        '5XX':
+          $ref: '#/components/responses/ServerError'
+
+  /brt/api/subscriber/save:
+    post:
+      tags:
+        - manager
+      summary: Добавление нового абонента
+      operationId: saveNewSubscriber
+      security:
+        - manager_auth: []
+      description: "Добавление нового абонента с параметрами: номер телефона, тариф, баланс"
+      responses:
+        '201':
+          description: Абонент успешно добавлен
+        '400':
+          $ref: '#/components/responses/InvalidValues'
+        '409':
+          description: Абонент уже создан
+        '5XX':
+          $ref: '#/components/responses/ServerError'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Subscriber'
+  /api/start:
+    post:
+      tags:
+        - CDR
+      summary: Запуск генератора CDR
+      operationId: startCDR
+      responses:
+        '200':
+          description: Генератор CDR запущен
+        '5XX':
+          $ref: '#/components/responses/ServerError'
+  /api/register:
+    post:
+      tags:
+        - CDR
+      summary: Добавление стоп-поинта
+      responses:
+        '200':
+          description: Стоп-поинт добавлен
+        '5XX':
+          $ref: '#/components/responses/ServerError'
+  /api/deregister:
+    post:
+      tags:
+        - CDR
+      summary: Удаление стоп-поинта
+      responses:
+        '200':
+          description: Стоп-поинт удален
+        '5XX':
+          $ref: '#/components/responses/ServerError'
+  /api/iterate:
+    post:
+      tags:
+        - CDR
+      summary: Выполнение одного шага генерации до следующего месяца
+      responses:
+        '200':
+          description: Шаг генерации выполнен
+        '5XX':
+          $ref: '#/components/responses/ServerError'
+
+
+
+components:
+  schemas:
+    Subscriber:
+      type: object
+      properties:
+        msisdn:
+          type: integer
+          description: Номер абонента
+          format: int64
+          example: 79007770303
+        tariffId:
+          type: integer
+          description: ID тарифа абонента
+          format: int32
+          example: 01
+    Money:
+      type: object
+      properties:
+        money:
+          type: number
+          description: Сумма пополнения
+          format: float
+          example: 1000.1
+    NewTariff:
+      type: object
+      properties:
+        tariffId:
+          type: integer
+          description: Новый ID тарифа абонента
+          format: int32
+          example: 01
+  responses:
+    ServerError:
+      description: Ошибка сервера
+    InvalidValues:
+      description: Переданы неверные параметры
+    InvalidAuth:
+      description: Ошибка аутентификации, неверные учетные данные
+  securitySchemes:
+    manager_auth:
+      type: http
+      scheme: basic
+      description: Авторизация менеджера с указанием логина и пароля
