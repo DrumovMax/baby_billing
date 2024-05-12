@@ -1,8 +1,8 @@
 package com.nexign.brt.dto;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import lombok.*;
-
-import java.math.BigDecimal;
 
 @Getter
 @Setter
@@ -11,7 +11,15 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class ClientDTO {
 
-    private Long clientNumber;
-    private Long tariffNumber;
+    private Long msisdn;
+    private Long tariffId;
+
+    public String toJson () {
+        Gson gson = new GsonBuilder()
+                .setPrettyPrinting()
+                .create();
+
+        return gson.toJson(this);
+    }
 
 }

@@ -21,11 +21,11 @@ public class Client {
     @Column(name = "client_id")
     private Long id;
 
-    @Column(name = "client_number")
-    private Long clientNumber;
+    @Column(name = "msisdn")
+    private Long msisdn;
 
-    @Column(name = "tariff_number")
-    private Long tariffNumber;
+    @Column(name = "tariff_id")
+    private Long tariffId;
 
     @Column(name = "balance")
     private BigDecimal balance;

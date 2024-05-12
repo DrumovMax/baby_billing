@@ -12,12 +12,8 @@ import org.springframework.stereotype.Service;
 public class KafkaBRTConsumer {
 
     @Resource
-    private TariffCache tariffCache;
-
-    @Resource
     private BRTService brtService;
 
-    private static final String HRS_CACHE_TOPIC = "hrs-cache-topic";
     private static final String CDR_TOPIC = "cdr-topic";
     private static final String GROUP = "brt-group";
 
@@ -28,13 +24,6 @@ public class KafkaBRTConsumer {
     public void consume (String message) {
         String decodeMessage = String.valueOf(brtService.decodeData(message));
         brtService.checkListCall(decodeMessage);
-    }
-
-    @KafkaListener(topics = HRS_CACHE_TOPIC, groupId = GROUP, topicPartitions = {
-            @TopicPartition(topic = HRS_CACHE_TOPIC, partitions = "0")
-    })
-    public void cacheTariffs (String message) {
-        tariffCache.parseAndCacheJsonFiles(message);
     }
 
 }
