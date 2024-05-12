@@ -56,12 +56,17 @@ public class CDRService {
         phaser.arriveAndAwaitAdvance();
     }
 
-    public void register () {
+    public int register () {
         phaser.register();
+        return phaser.getRegisteredParties() - 1;
     }
 
-    public void deregister () {
-        phaser.arriveAndDeregister();
+    public int deregister () {
+        if (phaser.getRegisteredParties() > 1) {
+            phaser.arriveAndDeregister();
+        }
+
+        return phaser.getRegisteredParties() - 1;
     }
 
     private long getStartBillingPeriod () {
@@ -220,8 +225,11 @@ public class CDRService {
             monthCDRs.clear();
             currentUnixTime = nextMonthUnixTime;
             nextMonthUnixTime = countNextUnixTimeMonth(currentUnixTime);
-            System.out.println("End of " + month + " month");
         }
         System.out.println("End of billing period");
+    }
+
+    public void sendCDRToBRT (String base64CDRFile) {
+        kafkaCDRProducer.sendTransaction(CDR_TOPIC, "0", base64CDRFile);
     }
 }
