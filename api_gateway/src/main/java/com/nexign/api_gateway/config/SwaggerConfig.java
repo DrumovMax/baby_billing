@@ -8,7 +8,7 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 
 @Configuration
-public class CorsConfiguration extends org.springframework.web.cors.CorsConfiguration {
+public class SwaggerConfig {
 
     @Bean
     public CorsWebFilter corsFilter() {
