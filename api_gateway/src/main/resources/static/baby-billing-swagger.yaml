@@ -20,6 +20,8 @@ paths:
       summary: Пополнение баланса
       operationId: upToBalance
       description: Пополнение баланса абонентом на введенную сумму
+      security:
+        - subscriber_auth: [ ]
       parameters:
         - name: msisdn
           in: path
@@ -191,3 +193,7 @@ components:
       type: http
       scheme: basic
       description: Авторизация менеджера с указанием логина и пароля
+    subscriber_auth:
+      type: http
+      scheme: basic
+      description: Авторизация абонента с указанием логина

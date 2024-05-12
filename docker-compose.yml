@@ -70,11 +70,6 @@ services:
   cdr:
     image: drumov/cdr
     container_name: cdr
-#    build:
-#      context: .
-#      dockerfile: cdr/Dockerfile
-#    ports:
-#      - "8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
     networks:
@@ -86,11 +81,6 @@ services:
   brt:
     image: drumov/brt
     container_name: brt
-#    build:
-#      context: .
-#      dockerfile: brt/Dockerfile
-#    ports:
-#      - "8081:8081"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
     networks:
@@ -103,11 +93,6 @@ services:
   hrs:
     image: drumov/hrs
     container_name: hrs
-#    build:
-#      context: .
-#      dockerfile: hrs/Dockerfile
-#    ports:
-#      - "8082:8082"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
     networks:
