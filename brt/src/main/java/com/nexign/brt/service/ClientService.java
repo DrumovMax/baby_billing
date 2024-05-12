@@ -6,6 +6,7 @@ import com.nexign.brt.model.Client;
 import com.nexign.brt.repository.ClientRepository;
 import jakarta.annotation.Resource;
 import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -23,7 +24,8 @@ public class ClientService {
     @Resource
     private ClientRepository clientRepository;
 
-    private static final String HOST = "localhost";
+    @Value("${gateway.host}")
+    private String HOST;
     private static final String PORT = "8765";
     private static final String BASE = "/api";
     private static final String NEW_CLIENT = "/new-client";

@@ -11,6 +11,7 @@ import com.nexign.hrs.model.*;
 import com.nexign.hrs.repository.TariffRepository;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -37,7 +38,8 @@ public class HRSService {
     @Resource
     private TariffRepository tariffRepository;
 
-    private static final String HOST = "localhost";
+    @Value("${gateway.host}")
+    private String HOST;
     private static final String PORT = "8765";
     private static final String BASE = "/api/brt";
     private static final String MS = "/brt";
@@ -45,8 +47,6 @@ public class HRSService {
     private static final Long CLASSIC_TARIFF = 11L;
     private static final Long MONTH_TARIFF = 12L;
     private static final String MINIMAL_STEP = "0.1";
-
-
 
     public <T> String listToJson (List<T> tariffs) {
         Gson gson = new GsonBuilder()

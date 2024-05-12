@@ -45,7 +45,8 @@ public class BRTService {
     @Resource
     private ClientService clientService;
 
-    private static final String HOST = "localhost";
+    @Value("${gateway.host}")
+    private String HOST;
     private static final String PORT = "8765";
     private static final String BASE = "/api";
     private static final String MS = "/hrs";
