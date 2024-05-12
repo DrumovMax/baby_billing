@@ -1,18 +1,16 @@
 package com.nexign.hrs.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Setter
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class ClientDTO {
 
-    private Long clientNumber;
-    private Long tariffNumber;
+    private Long msisdn;
+    private Long tariffId;
     private Integer remainingMinutes;
 
 }

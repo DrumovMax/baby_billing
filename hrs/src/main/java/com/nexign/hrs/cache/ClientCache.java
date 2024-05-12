@@ -35,15 +35,23 @@ public class ClientCache {
                 .create();
     }
 
-    public void parseAndCacheJsonFiles(String jsonArrayString) {
+    public ClientDTO parseAndCacheJson (String json) {
+        ClientDTO clientDTO = gson.fromJson(json, new TypeToken<ClientDTO>() {}.getType());
+
+        tariffRepository.findById(clientDTO.getTariffId()).ifPresent(t -> clientDTO.setRemainingMinutes(t.getMonthlyLimitMinutes()));
+        putDataIntoCache(clientDTO.getMsisdn(), clientDTO);
+        return clientDTO;
+    }
+
+    public void parseAndCacheJsonArray (String jsonArrayString) {
         List<ClientDTO> clientDTOList = gson.fromJson(jsonArrayString, new TypeToken<List<ClientDTO>>() {}.getType());
 
         Map<Long, Integer> mapOfIdToRemainingMinutes = tariffRepository.findAll().stream()
                 .collect(Collectors.toMap(Tariff::getId, Tariff::getMonthlyLimitMinutes));
 
         for (ClientDTO clientDTO : clientDTOList) {
-            clientDTO.setRemainingMinutes(mapOfIdToRemainingMinutes.get(clientDTO.getTariffNumber()));
-            putDataIntoCache(clientDTO.getClientNumber(), clientDTO);
+            clientDTO.setRemainingMinutes(mapOfIdToRemainingMinutes.get(clientDTO.getTariffId()));
+            putDataIntoCache(clientDTO.getMsisdn(), clientDTO);
         }
     }
 
@@ -52,7 +60,7 @@ public class ClientCache {
 
         Map<Long, ClientDTO> cacheMap = cache.asMap();
         for (ClientDTO clientDTO : cacheMap.values()) {
-            if (clientDTO.getTariffNumber().equals(TariffId)) {
+            if (clientDTO.getTariffId().equals(TariffId)) {
                 matchedClients.add(clientDTO);
             }
         }
