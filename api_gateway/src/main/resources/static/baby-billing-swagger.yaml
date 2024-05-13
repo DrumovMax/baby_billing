@@ -18,7 +18,7 @@ paths:
       tags:
         - subscriber
       summary: Пополнение баланса
-      operationId: upToBalance
+      operationId: toUpBalance
       description: Пополнение баланса абонентом на введенную сумму
       security:
         - subscriber_auth: [ ]
@@ -29,19 +29,37 @@ paths:
           required: true
           schema:
             type: integer
-            example: 70009991212
+            example: 79007770303
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Money'
+              $ref: '#/components/schemas/TopUpDTO'
       responses:
         '200':
-          description: Баланс пополнен успешно
+          description: Баланс успешно пополнен
+          content:
+            text/plain:
+              schema:
+                type: string
         '400':
-          $ref: '#/components/responses/InvalidValues'
+          description: Некорректная сумма или сумма меньше минимальной (0.1 у.е.)
+          content:
+            text/plain:
+              schema:
+                type: string
         '404':
-          description: Абонент не найден
+          $ref: '#/components/responses/NotFound'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '403':
+          description: Абонент не авторизирован
+          content:
+            text/plain:
+              schema:
+                type: string
         '5XX':
           $ref: '#/components/responses/ServerError'
 
@@ -49,7 +67,7 @@ paths:
     patch:
       tags:
         - manager
-      summary: Смена тарифа абонента
+      summary: Смена тарифного плана абонента
       security:
         - manager_auth: []
       operationId: changeTariff
@@ -66,20 +84,30 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/NewTariff'
+              $ref: '#/components/schemas/ChangeTariffDTO'
       responses:
-        '201':
+        '200':
           description: Тариф успешно изменен
           content:
-            application/json:
+            text/plain:
               schema:
-                $ref: '#/components/schemas/Subscriber'
+                type: string
         '400':
-          $ref: '#/components/responses/InvalidValues'
-        '401':
+          description: Некорректный идентификатор тарифа
+          content:
+            text/plain:
+              schema:
+                type: string
+        '403':
           $ref: '#/components/responses/InvalidAuth'
+        '409':
+          description: Абонент 79007770303 уже пользуется данным тарифом
         '404':
-          description: Абонент не найден
+          $ref: '#/components/responses/NotFound'
+          content:
+            text/plain:
+              schema:
+                type: string
         '5XX':
           $ref: '#/components/responses/ServerError'
 
@@ -88,17 +116,31 @@ paths:
       tags:
         - manager
       summary: Добавление нового абонента
-      operationId: saveNewSubscriber
+      operationId: addNewClient
       security:
         - manager_auth: []
       description: "Добавление нового абонента с параметрами: номер телефона, тариф, баланс"
       responses:
-        '201':
-          description: Абонент успешно добавлен
+        '200':
+          description: Новый абонент успешно добавлен
+          content:
+            text/plain:
+              schema:
+                type: string
         '400':
-          $ref: '#/components/responses/InvalidValues'
+          description: Номер телефона / Тариф введен некорректно
+          content:
+            text/plain:
+              schema:
+                type: string
+        '403':
+          $ref: '#/components/responses/InvalidAuth'
+          content:
+            text/plain:
+              schema:
+                type: string
         '409':
-          description: Абонент уже создан
+          description: Абонент уже является клиентом Ромашки
         '5XX':
           $ref: '#/components/responses/ServerError'
       requestBody:
@@ -148,10 +190,18 @@ paths:
         '5XX':
           $ref: '#/components/responses/ServerError'
 
-
-
 components:
   schemas:
+    TopUpDTO:
+      type: object
+      required:
+        - money
+      properties:
+        money:
+          type:  number
+          description: Сумма пополнения
+          format: float
+          example: 100.1
     Subscriber:
       type: object
       properties:
@@ -163,31 +213,25 @@ components:
         tariffId:
           type: integer
           description: ID тарифа абонента
-          format: int32
-          example: 01
-    Money:
+          format: int64
+          example: 11
+    ChangeTariffDTO:
       type: object
-      properties:
-        money:
-          type: number
-          description: Сумма пополнения
-          format: float
-          example: 1000.1
-    NewTariff:
-      type: object
+      required:
+        - tariffId
       properties:
         tariffId:
           type: integer
           description: Новый ID тарифа абонента
-          format: int32
-          example: 01
+          format: int64
+          example: 11
   responses:
     ServerError:
-      description: Ошибка сервера
-    InvalidValues:
-      description: Переданы неверные параметры
+      description: Ошибка сервера при обработке запроса
+    NotFound:
+      description: Абонент не является клиентом Ромашки - 79007770303
     InvalidAuth:
-      description: Ошибка аутентификации, неверные учетные данные
+      description: Менеджер не авторизирован
   securitySchemes:
     manager_auth:
       type: http
